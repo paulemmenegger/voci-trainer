@@ -5,9 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#F4EFE4">
 <meta name="author" content="SeetalIT">
-<meta name="description" content="Voci-Trainer – vocabulary practice for students. A SeetalIT project (seetalit.ch).">
+<meta name="description" content="Vocabulary-Trainer – vocabulary practice for students. A SeetalIT project (seetalit.ch).">
 <meta name="copyright" content="© 2026 SeetalIT">
-<title>Voci-Trainer · SeetalIT</title>
+<title>Vocabulary-Trainer · SeetalIT</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -128,6 +129,20 @@
   .toast{position:fixed;left:50%;bottom:110px;transform:translateX(-50%) translateY(10px);background:var(--ink);color:#fff;padding:10px 16px;border-radius:999px;font-size:.9375rem;opacity:0;pointer-events:none;transition:opacity .2s ease,transform .2s ease}
   .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
   .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+  /* book tabs */
+  .tabs{position:relative;display:flex;padding:4px;margin-top:18px;background:#E9E3D5;border-radius:999px}
+  .tabs .ind{position:absolute;top:4px;bottom:4px;left:4px;border-radius:999px;background:var(--card);box-shadow:0 1px 2px rgba(31,42,43,.08),0 3px 10px rgba(31,42,43,.08);transition:transform .28s cubic-bezier(.2,.8,.2,1)}
+  .tab{position:relative;z-index:1;flex:1 1 0;min-width:0;min-height:52px;padding:6px 10px;border-radius:999px;font-weight:600;font-size:.9375rem;line-height:1.2;color:var(--muted);transition:color .2s ease,transform .12s ease}
+  .tab:active{transform:scale(.97)}
+  .tab[aria-selected="true"]{color:var(--accent-ink)}
+  .tab .soon{display:block;font-size:.75rem;font-weight:500;color:var(--muted)}
+  .panel{animation:panelIn .26s ease both}
+  @keyframes panelIn{from{opacity:0;transform:translateY(6px)}}
+  .soon-card{margin-top:22px;text-align:center;padding:34px 18px}
+  .soon-card .big{font-size:2.6rem;margin-bottom:8px}
+  .linkbtn{display:inline-flex;align-items:center;min-height:44px;margin-top:8px;font-weight:600;color:var(--accent-ink);text-decoration:underline;text-underline-offset:3px}
+  .brand{white-space:nowrap}
+  @media (max-width:360px){ .brand{font-size:1rem;gap:8px} .ghost{padding:0 8px} .tab{font-size:.875rem;padding:6px 6px} }
   @media (min-width:700px){ .choices{grid-template-columns:1fr 1fr} h1{font-size:2.4rem} }
   @media (prefers-reduced-motion:reduce){ *{transition:none!important;animation:none!important} }
 </style>
@@ -140,6 +155,7 @@
 <script>
 // ===== ENGINE-START (pure logic, no DOM) =====
 let BOOKS = []; // filled by loadBooks(); SAMPLE_BOOKS is the offline fallback
+let UPCOMING = []; // books announced in books/index.json ("upcoming") but without word lists yet
 const SAMPLE_BOOKS = [
   {
     id:"pre", title:"Pre-Intermediate", level:"A2", units:[
@@ -357,6 +373,7 @@ async function loadBooks(){
     const loaded=[];
     for(const f of idx.books){ loaded.push(await fetch("books/"+f,{cache:"no-cache"}).then(r=>{ if(!r.ok) throw new Error(f+" "+r.status); return r.json(); })); }
     BOOKS=loaded;
+    UPCOMING=(Array.isArray(idx.upcoming)?idx.upcoming:[]).filter(u=>u&&u.id&&u.title&&!loaded.some(b=>b.id===u.id));
   }catch(e){
     if(location.protocol==="file:"){ BOOKS=SAMPLE_BOOKS; }
     else { loadError="Could not load the word lists ("+e.message+"). Please reload."; BOOKS=[]; }
@@ -385,7 +402,7 @@ function render(){
   document.body.classList.toggle("quiz", view.name==="quiz");
   const cfg=loadCfg();
   const top=h(`<div class="topbar">
-      <button class="brand" id="home" aria-label="Voci-Trainer home"><span class="dot"></span>Voci-Trainer</button>
+      <button class="brand" id="home" aria-label="Vocabulary-Trainer home"><span class="dot"></span>Vocabulary-Trainer</button>
       <button class="ghost" id="teacher">${isTeacher?"Admin":"Teacher"}</button>
     </div>`);
   $app.appendChild(top);
@@ -405,17 +422,65 @@ function render(){
 
 function renderClosed(){
   $app.appendChild(h(`<div class="card closed">
-    <div class="big">🔒</div><h2>Voci-Trainer is closed right now</h2>
+    <div class="big">🔒</div><h2>Vocabulary-Trainer is closed right now</h2>
     <p class="muted" style="margin-top:8px">Your teacher will open it when it's time to practise.</p></div>`));
+}
+
+// ===== BOOK TABS: one tab per book (+ announced books as "coming soon") =====
+const TAB_KEY="voci_tab_v1";
+let curTab=null, shownTab=null; // shownTab = tab the indicator is currently on (for the slide animation)
+function tabList(){ return [...BOOKS.map(b=>({id:b.id,title:b.title,book:b})), ...UPCOMING.map(u=>({id:u.id,title:u.title,book:null}))]; }
+function openCount(cfg,b){ let n=0; b.units.forEach(u=>u.subs.forEach(s=>{ if(isOpen(cfg,b,u,s)) n++; })); return n; }
+function activeTab(cfg,forStudents){
+  const tabs=tabList(); if(!tabs.length) return null;
+  if(curTab&&tabs.some(t=>t.id===curTab)) return curTab;
+  let stored=null; try{ stored=localStorage.getItem(TAB_KEY); }catch(e){}
+  const has=t=>t.book&&openCount(cfg,t.book)>0;
+  const st=tabs.find(t=>t.id===stored);
+  // students: prefer the remembered book if something is open there, else the first book with open chapters
+  if(forStudents){ if(st&&has(st)) return curTab=st.id; const firstOpen=tabs.find(has); if(firstOpen) return curTab=firstOpen.id; }
+  return curTab=(st||tabs[0]).id;
+}
+function setTab(id){ curTab=id; try{ localStorage.setItem(TAB_KEY,id); }catch(e){} render(); }
+function tabsHtml(active){
+  const tabs=tabList();
+  return `<div class="tabs" role="tablist" aria-label="Book">${tabs.length>1?`<span class="ind" aria-hidden="true"></span>`:""}${tabs.map(t=>`<button class="tab" role="tab" id="tab-${esc(t.id)}" aria-controls="panel" aria-selected="${t.id===active}" tabindex="${t.id===active?0:-1}" data-id="${esc(t.id)}">${esc(t.title)}${t.book?"":`<span class="soon">coming soon</span>`}</button>`).join("")}</div>`;
+}
+function wireTabs(root,active){
+  const tabs=tabList(); const el=root.querySelector(".tabs"); if(!el) return;
+  const btns=[...el.querySelectorAll(".tab")];
+  btns.forEach((b,i)=>{
+    b.onclick=()=>{ if(b.dataset.id!==active) setTab(b.dataset.id); };
+    b.onkeydown=e=>{ // arrow keys move between tabs (WAI-ARIA tabs pattern)
+      const d=e.key==="ArrowRight"?1:e.key==="ArrowLeft"?-1:0; if(!d&&e.key!=="Home"&&e.key!=="End") return;
+      e.preventDefault(); const j=e.key==="Home"?0:e.key==="End"?btns.length-1:(i+d+btns.length)%btns.length;
+      setTab(btns[j].dataset.id); const nb=document.getElementById("tab-"+btns[j].dataset.id); if(nb) nb.focus();
+    };
+  });
+  const ind=el.querySelector(".ind"); if(!ind) return;
+  const n=tabs.length, ai=Math.max(0,tabs.findIndex(t=>t.id===active)), pi=tabs.findIndex(t=>t.id===shownTab);
+  ind.style.width=`calc((100% - 8px) / ${n})`;
+  ind.style.transform=`translateX(${(pi<0?ai:pi)*100}%)`;
+  if(pi>=0&&pi!==ai) requestAnimationFrame(()=>requestAnimationFrame(()=>{ ind.style.transform=`translateX(${ai*100}%)`; }));
+  shownTab=active;
 }
 
 function renderHome(cfg){
   const mis=loadMistakes();
-  const frag=h(`<div><h1>Practise your words</h1><p class="muted" style="margin-top:6px">Pick a chapter. Every word comes once, in a random order.</p></div>`);
-  $app.appendChild(frag);
+  const active=activeTab(cfg,true);
+  const tab=tabList().find(t=>t.id===active);
+  const frag=h(`<div><h1>Practise your words</h1><p class="muted" style="margin-top:6px">Pick a chapter. Every word comes once, in a random order.</p>${tabsHtml(active)}</div>`);
+  $app.appendChild(frag); wireTabs($app,active);
+  const panel=h(`<div class="panel" id="panel" role="tabpanel" aria-labelledby="tab-${esc(active||"")}"></div>`).firstElementChild;
+  $app.appendChild(panel);
+  if(!tab) return;
+  if(!tab.book){
+    panel.appendChild(h(`<div class="card soon-card"><div class="big" aria-hidden="true">📘</div><h2>${esc(tab.title)} is coming soon</h2><p class="muted" style="margin-top:8px">The words for this book are on their way. Your teacher will unlock them when they're ready.</p></div>`));
+    return;
+  }
   let anyOpen=false;
-  BOOKS.forEach(b=>{
-    const bookEl=h(`<section class="book"><h2>${esc(b.title)}</h2></section>`).firstElementChild;
+  [tab.book].forEach(b=>{
+    const bookEl=h(`<section class="book"></section>`).firstElementChild;
     b.units.forEach(u=>{
       const uEl=h(`<div class="unit"><h3>${esc(u.title)}</h3></div>`).firstElementChild;
       u.subs.forEach(s=>{
@@ -434,9 +499,14 @@ function renderHome(cfg){
       });
       bookEl.appendChild(uEl);
     });
-    $app.appendChild(bookEl);
+    panel.appendChild(bookEl);
   });
-  if(!anyOpen) $app.appendChild(h(`<div class="note" style="margin-top:20px">No chapter is open yet. Ask your teacher to unlock one.</div>`));
+  if(!anyOpen){
+    const other=tabList().find(t=>t.book&&t.id!==active&&openCount(cfg,t.book)>0);
+    const note=h(`<div class="note" style="margin-top:20px">No chapter is open in ${esc(tab.title)} yet.${other?`<br><button class="linkbtn" id="toOther">Open chapters in ${esc(other.title)} →</button>`:` Ask your teacher to unlock one.`}</div>`).firstElementChild;
+    panel.prepend(note);
+    if(other) note.querySelector("#toOther").onclick=()=>setTab(other.id);
+  }
 }
 
 function startQuiz(b,u,s,onlyIds){
@@ -573,10 +643,10 @@ function renderLogin(){
 function renderAdmin(cfg){
   const wrap=h(`<div class="stack">
       <div class="card">
-        <div class="toggle"><div><b>App online</b><br><span class="small muted">Off = students see “Voci-Trainer is closed”.</span></div>
+        <div class="toggle"><div><b>App online</b><br><span class="small muted">Off = students see “Vocabulary-Trainer is closed”.</span></div>
           <button class="switch" role="switch" aria-checked="${cfg.on}" id="appOn" aria-label="App online"></button></div>
       </div>
-      <div class="card" id="units"><h3 style="margin-bottom:6px">Open chapters</h3><p class="small muted">Only open chapters can be practised.</p></div>
+      <div class="card" id="units"><h3 style="margin-bottom:6px">Open chapters</h3><p class="small muted">Only open chapters can be practised.</p>${tabsHtml(activeTab(cfg,false))}</div>
       <div class="row"><button class="btn btn-secondary" id="logout">Log out${teacherEmail?` (${esc(teacherEmail)})`:""}</button></div>
       <p class="small muted">${LOCAL_MODE()?"Local mode: settings are stored in this browser only.":"Changes are saved on the server and reach every student device within seconds."}</p>
     </div>`).firstElementChild;
@@ -584,8 +654,10 @@ function renderAdmin(cfg){
   const sw=wrap.querySelector("#appOn");
   sw.onclick=()=>{ cfg.on=!cfg.on; saveCfg(cfg); sw.setAttribute("aria-checked",cfg.on); toast(cfg.on?"App is online":"App is offline"); };
   const units=wrap.querySelector("#units");
-  BOOKS.forEach(b=>{
-    units.appendChild(h(`<h3 style="margin-top:16px">${esc(b.title)}</h3>`));
+  const active=activeTab(cfg,false); wireTabs(units,active);
+  const tab=tabList().find(t=>t.id===active);
+  if(tab&&!tab.book) units.appendChild(h(`<p class="note" style="margin-top:16px">${esc(tab.title)}: word list not uploaded yet (books/ + index.json).</p>`));
+  (tab&&tab.book?[tab.book]:[]).forEach(b=>{
     b.units.forEach(u=>{
       units.appendChild(h(`<p style="margin-top:10px;font-weight:600;color:var(--accent-ink)">${esc(u.title)}</p>`));
       u.subs.forEach(s=>{
