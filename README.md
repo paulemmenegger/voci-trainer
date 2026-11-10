@@ -1,6 +1,6 @@
 # Vocabulary-Trainer
 
-Vokabel-Übungs-App für Schülerinnen und Schüler (English File Pre-Intermediate A2, Upper-Intermediate B2 folgt).
+Vokabel-Übungs-App für Schülerinnen und Schüler (English File Pre-Intermediate A2 und Upper-Intermediate B2, je inkl. Irregular verbs).
 
 Ein Projekt von **SeetalIT** · [seetalit.ch](https://seetalit.ch) · Paul Emmenegger, Hochdorf
 

@@ -1,1 +1,1 @@
-{"books": ["pre.json"], "upcoming": [{"id": "upper", "title": "Upper-Intermediate"}]}
+{"books": ["pre.json", "upper.json"], "upcoming": []}

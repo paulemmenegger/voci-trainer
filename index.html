@@ -217,7 +217,7 @@ const FORM_LABEL = {noun:"noun", verb:"verb", adj:"adjective", adv:"adverb"};
 
 function shuffle(arr, rnd=Math.random){ const a=arr.slice(); for(let i=a.length-1;i>0;i--){const j=Math.floor(rnd()*(i+1));[a[i],a[j]]=[a[j],a[i]];} return a; }
 function pick(arr, rnd=Math.random){ return arr[Math.floor(rnd()*arr.length)]; }
-function norm(s){ return String(s||"").toLowerCase().replace(/[’‘`]/g,"'").replace(/[?.!,;:]+$/,"").replace(/[\s\-]+/g,"").trim(); }
+function norm(s){ return String(s||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[’‘`]/g,"'").replace(/[?.!,;:]+$/,"").replace(/[\s\-]+/g,"").trim(); }
 const answersOf=w=>(w.answers&&w.answers.length?w.answers:[w.word]);
 const typeable=w=>answersOf(w).length<=3 && !answersOf(w).some(a=>/…|\.\.\.|\b(sb|sth)\b/.test(a));
 function checkTyped(answer, accepted){ const n=norm(answer); return accepted.some(a=>norm(a)===n); }
@@ -268,7 +268,7 @@ function buildQuestion(w, type, pool, rnd=Math.random, near=null){
   } else if(type==="forms"){
     const keys=Object.keys(w.forms); const k=pick(keys,rnd);
     q.prompt={kind:"forms", word:w.word, from:w.pos, to:FORM_LABEL[k]||k}; q.hint=`Type the ${FORM_LABEL[k]||k}.`;
-    q.accepted=[w.forms[k]]; q.answer=w.forms[k]; q.pattern=letterPattern(q.answer);
+    q.accepted=String(w.forms[k]).split(/\s+\/\s+/); q.answer=w.forms[k]; q.pattern=letterPattern(q.accepted[0]); // "burnt / burned": both count
   } else if(type==="mc"){
     const uniq=list=>{ const seen=new Set([norm(w.def)]); return list.filter(d=>{ const k=norm(d); if(!d||seen.has(k)) return false; seen.add(k); return true; }); };
     let wrongDefs=shuffle(uniq(others.map(o=>o.def)),rnd).slice(0,3);
