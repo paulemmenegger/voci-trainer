@@ -161,7 +161,7 @@
   .sp-main>*{position:relative}
   /* the whole logo lands like a rubber stamp */
   .sp-logo{display:inline-flex;align-items:center;gap:.2rem;font-family:"Nunito Sans",system-ui,sans-serif;font-weight:800;font-size:2.4rem;letter-spacing:-.015em;line-height:1;color:var(--sp-ink);transform-origin:50% 60%;animation:stamp .55s cubic-bezier(.2,1.4,.4,1) .25s both}
-  .sp-logo .it{display:inline-block;background:var(--sp-green);color:#fff;border-radius:.4rem;padding:.12em .3em .16em;font-size:.82em;margin-left:.1rem;box-shadow:0 6px 18px rgba(62,107,56,.28)}
+  .sp-logo .it{display:inline-block;background:var(--sp-green);color:#fff;border-radius:.4rem;padding:.12em .3em .16em;font-size:.82em;margin-left:.18rem;transform:rotate(-6deg);box-shadow:0 6px 18px rgba(62,107,56,.28)}
   @keyframes stamp{0%{opacity:0;transform:scale(2.4) rotate(-9deg)}55%{opacity:1;transform:scale(.94) rotate(1.5deg)}100%{opacity:1;transform:scale(1) rotate(0)}}
   .sp-thud{position:absolute;left:50%;top:50%;width:14rem;height:14rem;margin:-7rem 0 0 -7rem;border-radius:50%;background:radial-gradient(closest-side,rgba(167,201,160,.55),rgba(167,201,160,0));opacity:0;animation:thud .7s ease-out .5s both;pointer-events:none}
   @keyframes thud{0%{opacity:.9;transform:scale(.3)}100%{opacity:0;transform:scale(1.6)}}
